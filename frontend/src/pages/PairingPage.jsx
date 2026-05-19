@@ -60,19 +60,25 @@ export default function PairingPage() {
       <div className="glass rounded-full p-1 flex gap-1 mb-6">
         <button
           onClick={() => setMode('share')}
-          className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
+          className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${
             mode === 'share' ? 'bg-white text-pink-500' : 'text-white/70'
           }`}
         >
-          Share Code
+          Share
         </button>
         <button
           onClick={() => setMode('enter')}
-          className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
+          className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${
             mode === 'enter' ? 'bg-white text-pink-500' : 'text-white/70'
           }`}
         >
-          Enter Code
+          Enter
+        </button>
+        <button
+          onClick={() => navigate('/scan')}
+          className="px-4 py-2 rounded-full text-xs font-medium text-white/70 hover:text-white transition-all"
+        >
+          📷 Scan
         </button>
       </div>
 

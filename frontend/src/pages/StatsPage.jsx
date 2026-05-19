@@ -154,11 +154,15 @@ export default function StatsPage() {
       <motion.nav
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="fixed bottom-0 left-0 right-0 glass-strong border-t border-white/10 px-6 py-3 flex justify-around items-center"
+        className="fixed bottom-0 left-0 right-0 glass-strong border-t border-white/10 px-4 py-3 flex justify-around items-center"
       >
         <button onClick={() => navigate('/home')} className="flex flex-col items-center gap-1">
           <span className="text-xl">🏠</span>
           <span className="text-white/60 text-[10px]">Home</span>
+        </button>
+        <button onClick={() => navigate('/memories')} className="flex flex-col items-center gap-1">
+          <span className="text-xl">💌</span>
+          <span className="text-white/60 text-[10px]">Memories</span>
         </button>
         <button onClick={() => navigate('/stats')} className="flex flex-col items-center gap-1">
           <span className="text-xl">📊</span>

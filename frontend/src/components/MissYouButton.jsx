@@ -6,7 +6,7 @@ import { useNotificationStore } from '../store/useNotificationStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useCoupleStore } from '../store/useCoupleStore';
 import { useSettingsStore } from '../store/useSettingsStore';
-import { sendPushNotification } from '../services/onesignal';
+import { dispatchNotification } from '../services/notifications';
 
 export default function MissYouButton() {
   const [pressed, setPressed] = useState(false);
@@ -29,19 +29,11 @@ export default function MissYouButton() {
     if (vibration) triggerHaptic('heartbeat');
     if (sound) playSound('missYou');
     
-    // Send notification
+    // Send notification via secure dispatcher (Edge Function -> OneSignal,
+    // with fallback to direct DB insert if function isn't deployed)
     if (user?.id && partner?.id) {
       await sendMissYou(user.id, partner.id, 'miss');
-      
-      // Trigger push notification via OneSignal
-      if (partner.onesignal_player_id) {
-        await sendPushNotification(
-          partner.onesignal_player_id,
-          '❤️ Someone misses you',
-          `${user.nickname || 'Your person'} misses you badly right now...`,
-          { type: 'miss', senderId: user.id }
-        );
-      }
+      await dispatchNotification({ receiverId: partner.id, type: 'miss' });
     }
     
     setTimeout(() => {
