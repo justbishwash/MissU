@@ -187,3 +187,40 @@ without server-side rate limiting.
 - **Theme system** — 5 themes with unlock criteria (streak / days together)
 - **Quick-reply actions** — service worker handles Miss You Too / Send Hug from notification, dispatches reverse notification automatically
 - **Server-side notification dispatch** — Edge Function with rate limiting, couple verification, and OneSignal integration
+
+
+
+---
+
+## Phase 3 Setup Additions
+
+### 10. Run the Phase 3 migration
+
+In Supabase SQL Editor, run `backend/migrations/003_phase3.sql`. This adds:
+- `avatars` storage bucket (public, with auth-only upload to user's own folder)
+- `milestones` table (which celebrations have been shown to which couple)
+- `users.muted_until` and `users.muted_moods` columns
+- `pending_milestones(couple_id)` SQL function used by the celebration screen
+
+### 11. New components & systems
+
+- **ReceivedNotificationOverlay** — Full-screen, mood-aware "viral moment" when a notification arrives in-app. Big emoji, gradient backdrop, confetti, quick-reply buttons. This is the heart of the new experience.
+- **MilestoneCelebration** — 7/14/30/100 day streak, 30/100/365 day anniversary, and first-paired celebrations. Polled on home open via `pending_milestones`.
+- **NotificationPermissionFlow** — Elegant first-run modal that asks for browser push permission once user is paired.
+- **NotificationInbox** — Bottom-sheet with last 50 received notifications.
+- **AvatarUpload** — Single-click avatar editor used in Login onboarding and Settings.
+- **AnniversaryEditor** — Date picker for couples to set their anniversary; feeds into the `days_30 / days_100 / days_365` milestones.
+- **HeartConfetti** — Canvas confetti burst with 3 intensity levels.
+
+### 12. Real-time presence
+
+`usePresence({ coupleId, userId, partnerId })` opens a Supabase Realtime channel
+keyed on the couple. It tracks online state via `presence` events and exposes
+`partnerOnline` + `partnerTyping` plus a `sendTyping(boolean)` broadcaster.
+Used on the home page to show the live online dot and "💬 typing..." label.
+
+### 13. Per-mood mute
+
+In Settings → "Mute by Mood", users can silence sound + haptic for specific
+mood types (e.g. mute `angry` to avoid a jarring alert at work). The overlay
+still shows visually so nothing is missed.

@@ -5,8 +5,11 @@ import { useAuthStore } from './store/useAuthStore';
 import { useCoupleStore } from './store/useCoupleStore';
 import { initOneSignal } from './services/onesignal';
 import { dispatchNotification } from './services/notifications';
+import ReceivedNotificationOverlay from './components/ReceivedNotificationOverlay';
+import MilestoneCelebration from './components/MilestoneCelebration';
+import NotificationPermissionFlow from './components/NotificationPermissionFlow';
+import NotificationInbox from './components/NotificationInbox';
 
-// Lazy load pages
 const SplashPage = lazy(() => import('./pages/SplashPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const PairingPage = lazy(() => import('./pages/PairingPage'));
@@ -24,7 +27,7 @@ function LoadingScreen() {
   );
 }
 
-// Listens for service-worker quick-reply actions and dispatches them
+// Listens for service-worker quick-reply actions from background notifications
 function NotificationActionListener() {
   const navigate = useNavigate();
 
@@ -82,6 +85,12 @@ export default function App() {
           </Routes>
         </Suspense>
       </AnimatePresence>
+
+      {/* Global overlays — render above all routes */}
+      <ReceivedNotificationOverlay />
+      <MilestoneCelebration />
+      <NotificationPermissionFlow />
+      <NotificationInbox />
     </div>
   );
 }
