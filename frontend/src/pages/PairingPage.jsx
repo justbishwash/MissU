@@ -14,6 +14,8 @@ export default function PairingPage() {
   const [inputCode, setInputCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [genError, setGenError] = useState('');
+  const [genLoading, setGenLoading] = useState(false);
 
   useEffect(() => {
     if (isPaired) {
@@ -22,9 +24,15 @@ export default function PairingPage() {
   }, [isPaired, navigate]);
 
   useEffect(() => {
-    if (user?.id && !inviteCode) {
-      generateInviteCode(user.id);
-    }
+    if (!user?.id || inviteCode) return;
+    setGenLoading(true);
+    setGenError('');
+    generateInviteCode(user.id)
+      .then((res) => {
+        if (res?.error) setGenError(res.error);
+      })
+      .catch((e) => setGenError(e?.message || 'Could not create invite code'))
+      .finally(() => setGenLoading(false));
   }, [user, inviteCode, generateInviteCode]);
 
   const handleJoin = async (e) => {
@@ -93,19 +101,24 @@ export default function PairingPage() {
         {mode === 'share' ? (
           <div className="flex flex-col items-center">
             {/* QR Code */}
-            <div className="bg-white rounded-2xl p-4 mb-4">
-              <QRCodeSVG 
-                value={qrData || 'loading...'} 
+            <div className="bg-white rounded-2xl p-4 mb-4 relative">
+              <QRCodeSVG
+                value={qrData || 'missu-loading'}
                 size={180}
                 level="M"
-                fgColor="#ff6b9d"
+                fgColor={inviteCode ? '#ff6b9d' : '#fde2eb'}
               />
+              {(genLoading || !inviteCode) && !genError && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-2xl">
+                  <span className="text-pink-500 text-sm font-medium">Generating...</span>
+                </div>
+              )}
             </div>
-            
+
             {/* Invite code display */}
             <p className="text-white/60 text-xs mb-2">Or share this code:</p>
             <motion.div
-              animate={{ scale: [1, 1.02, 1] }}
+              animate={inviteCode ? { scale: [1, 1.02, 1] } : {}}
               transition={{ duration: 2, repeat: Infinity }}
               className="bg-white/10 border border-white/20 rounded-2xl px-6 py-3"
             >
@@ -113,10 +126,30 @@ export default function PairingPage() {
                 {inviteCode || '------'}
               </span>
             </motion.div>
-            
-            <p className="text-white/50 text-xs mt-4 text-center">
-              Send this to your partner. Code expires in 24h.
-            </p>
+
+            {genError ? (
+              <div className="mt-4 text-center">
+                <p className="text-rose-200 text-xs mb-2">
+                  Couldn't create code: {genError}
+                </p>
+                <button
+                  onClick={() => {
+                    setGenError('');
+                    setGenLoading(true);
+                    generateInviteCode(user.id)
+                      .then((r) => r?.error && setGenError(r.error))
+                      .finally(() => setGenLoading(false));
+                  }}
+                  className="text-white text-xs underline"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : (
+              <p className="text-white/50 text-xs mt-4 text-center">
+                Send this to your partner. Code expires in 24h.
+              </p>
+            )}
           </div>
         ) : (
           <div>

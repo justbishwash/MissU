@@ -9,6 +9,7 @@ import ReceivedNotificationOverlay from './components/ReceivedNotificationOverla
 import MilestoneCelebration from './components/MilestoneCelebration';
 import NotificationPermissionFlow from './components/NotificationPermissionFlow';
 import NotificationInbox from './components/NotificationInbox';
+import InstallBanner from './components/InstallBanner';
 
 const SplashPage = lazy(() => import('./pages/SplashPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -91,6 +92,7 @@ export default function App() {
       <MilestoneCelebration />
       <NotificationPermissionFlow />
       <NotificationInbox />
+      <InstallBanner />
     </div>
   );
 }
