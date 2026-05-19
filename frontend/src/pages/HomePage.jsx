@@ -8,7 +8,9 @@ import DistanceCard from '../components/DistanceCard';
 import StreakCounter from '../components/StreakCounter';
 import EmergencyAttention from '../components/EmergencyAttention';
 import PairingCta from '../components/PairingCta';
+import RelationshipDuration from '../components/RelationshipDuration';
 import ThemeBackground from '../components/ThemeBackground';
+import BottomNav from '../components/BottomNav';
 import { useAuthStore } from '../store/useAuthStore';
 import { useCoupleStore } from '../store/useCoupleStore';
 import { useReceivedStore } from '../store/useReceivedStore';
@@ -19,7 +21,6 @@ import { usePresence } from '../hooks/usePresence';
 const MiniMapCard = lazy(() => import('../components/MiniMapCard'));
 
 export default function HomePage() {
-  const navigate = useNavigate();
   const [moodOpen, setMoodOpen] = useState(false);
   const [showMap, setShowMap] = useState(false);
 
@@ -35,220 +36,175 @@ export default function HomePage() {
     partnerId: partner?.id,
   });
 
-  // Load couple data on mount
   useEffect(() => {
     if (user?.id) fetchCouple(user.id);
   }, [user, fetchCouple]);
 
-  // Check for milestones whenever streak/days change
   useEffect(() => {
     if (!couple?.id) return;
     let cancelled = false;
-
-    const run = async () => {
+    (async () => {
       const pending = await checkPending(couple.id);
       if (cancelled) return;
-      // Only show if nothing else is currently displayed
       if (pending.length > 0 && !currentMilestone) {
-        // Small delay so UI is settled before celebration
         setTimeout(() => showNext(), 1500);
       }
-    };
-    run();
-
+    })();
     return () => { cancelled = true; };
   }, [couple?.id, streak?.current_streak, checkPending, showNext, currentMilestone]);
 
-  const getDaysTogether = () => {
-    if (!couple?.paired_at) return 0;
-    return Math.floor((Date.now() - new Date(couple.paired_at).getTime()) / (1000 * 60 * 60 * 24));
-  };
-
   const unreadCount = inbox.filter((n) => !n.opened && n.receiver_id === user?.id).length;
+  const anniversary = couple?.anniversary_at || couple?.anniversary_date;
 
   const presenceLabel = partnerTyping
     ? '💬 typing...'
     : partnerOnline
-    ? '🌙 Online now'
+    ? 'Online now'
     : partner?.last_seen
-    ? `💫 Active ${timeAgoShort(partner.last_seen)}`
-    : '💫 Away';
+    ? `Active ${timeAgoShort(partner.last_seen)}`
+    : 'Away';
 
   return (
     <ThemeBackground>
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden min-h-screen">
         <FloatingHearts intensity={isPaired ? 'medium' : 'low'} />
 
-        <div className="relative z-10 px-6 py-8 pb-24 max-w-md mx-auto min-h-screen flex flex-col">
-          {/* Inbox button — top right */}
-          <motion.button
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            whileTap={{ scale: 0.92 }}
-            onClick={() => setInboxOpen(true)}
-            className="absolute top-6 right-6 glass rounded-full w-10 h-10 flex items-center justify-center"
-          >
-            <span className="text-base">💌</span>
-            {unreadCount > 0 && (
-              <motion.span
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute -top-1 -right-1 bg-pink-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center border-2 border-white/40"
-              >
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </motion.span>
-            )}
-          </motion.button>
+        <div className="relative z-10 px-5 pt-6 pb-28 max-w-md mx-auto min-h-screen flex flex-col">
+          {/* Top bar */}
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-white/50 text-[11px] uppercase tracking-wider font-semibold">
+                MissU
+              </p>
+              <p className="text-white text-lg font-bold">
+                Hi, {profile?.nickname || 'love'} 👋
+              </p>
+            </div>
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setInboxOpen(true)}
+              className="relative glass rounded-full w-11 h-11 flex items-center justify-center"
+              aria-label="Inbox"
+            >
+              <span className="text-base">💌</span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center border-2 border-white/30">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </motion.button>
+          </div>
 
-          {/* Top section */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-5"
-          >
-            <div className="relative inline-block mb-3">
+          {!isPaired ? (
+            <PairingCta />
+          ) : (
+            <>
+              {/* Partner card */}
               <motion.div
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ duration: 3, repeat: Infinity }}
-                className="w-16 h-16 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center overflow-hidden"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass-strong rounded-3xl p-5 mb-4 border border-white/20"
               >
-                {partner?.avatar_url ? (
-                  <img src={partner.avatar_url} alt="" className="w-full h-full object-cover" />
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="w-14 h-14 rounded-full bg-white/15 border border-white/30 flex items-center justify-center overflow-hidden">
+                      {partner?.avatar_url ? (
+                        <img src={partner.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-xl">💕</span>
+                      )}
+                    </div>
+                    <div
+                      className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white/30 ${
+                        partnerOnline ? 'bg-emerald-400' : 'bg-white/30'
+                      }`}
+                    >
+                      {partnerOnline && (
+                        <motion.div
+                          animate={{ scale: [1, 2, 1], opacity: [1, 0, 1] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                          className="absolute inset-0 rounded-full bg-emerald-400"
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-bold truncate">
+                      {partner?.nickname || 'Your person'}
+                    </p>
+                    <p className={`text-[11px] font-medium ${partnerTyping ? 'text-pink-200' : 'text-white/60'}`}>
+                      {presenceLabel}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Live duration ticker */}
+                {anniversary ? (
+                  <div className="mt-4">
+                    <p className="text-white/55 text-[10px] uppercase tracking-wider font-semibold mb-2 text-center">
+                      Together since {new Date(anniversary).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' })}
+                    </p>
+                    <RelationshipDuration anniversary={anniversary} />
+                  </div>
                 ) : (
-                  <span className="text-2xl">{isPaired ? '💕' : '👤'}</span>
+                  <p className="text-white/50 text-xs text-center mt-3 italic">
+                    Set your first-met date to count every second ✨
+                  </p>
                 )}
               </motion.div>
-              {/* Online dot */}
-              {isPaired && partnerOnline && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-green-400 border-2 border-white shadow-md"
-                >
-                  <motion.div
-                    animate={{ scale: [1, 2, 1], opacity: [1, 0, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="absolute inset-0 rounded-full bg-green-400"
-                  />
-                </motion.div>
-              )}
-            </div>
 
-            <h2 className="text-white font-bold text-lg">
-              {isPaired ? (
-                <>❤️ Connected with {partner?.nickname || 'Your Person'}</>
-              ) : (
-                <>Hi {profile?.nickname || 'there'} 👋</>
-              )}
-            </h2>
-
-            {isPaired && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-white/60 text-sm mt-1"
-              >
-                Together for {getDaysTogether()} days ✨
-              </motion.p>
-            )}
-
-            {isPaired && (
-              <motion.div
-                key={presenceLabel}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-2"
-              >
-                <span className={`text-xs font-medium ${partnerTyping ? 'text-pink-200' : 'text-white/70'}`}>
-                  {presenceLabel}
-                </span>
-              </motion.div>
-            )}
-          </motion.div>
-
-          {/* Pairing CTA when not paired */}
-          {!isPaired && <PairingCta />}
-
-          {/* Distance */}
-          {isPaired && (
-            <div className="mb-3">
+              {/* Distance */}
               <DistanceCard />
-            </div>
-          )}
 
-          {/* Map toggle */}
-          {isPaired && (
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setShowMap((v) => !v)}
-              className="text-white/60 text-xs text-center mb-3 underline"
-            >
-              {showMap ? 'Hide map' : 'Show love map 🗺️'}
-            </motion.button>
-          )}
+              {/* Map toggle */}
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setShowMap((v) => !v)}
+                className="text-white/55 text-xs text-center my-3 underline"
+              >
+                {showMap ? 'Hide map' : 'Show love map 🗺️'}
+              </motion.button>
 
-          {showMap && isPaired && (
-            <div className="mb-4">
-              <Suspense fallback={
-                <div className="glass rounded-2xl p-6 text-center text-white/60 text-sm">
-                  Loading map...
-                </div>
-              }>
-                <MiniMapCard />
-              </Suspense>
-            </div>
+              {showMap && (
+                <Suspense fallback={
+                  <div className="glass rounded-2xl p-6 text-center text-white/60 text-sm mb-3">
+                    Loading map...
+                  </div>
+                }>
+                  <div className="mb-3"><MiniMapCard /></div>
+                </Suspense>
+              )}
+            </>
           )}
 
           {/* Main button */}
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center my-4 min-h-[200px]">
             <MissYouButton />
           </div>
 
           {/* Bottom controls */}
-          <div className="space-y-3 mt-6">
-            <StreakCounter streak={streak} />
+          {isPaired && (
+            <div className="space-y-2.5">
+              <StreakCounter streak={streak} />
 
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setMoodOpen(true)}
-              className="w-full glass rounded-2xl p-4 flex items-center justify-between"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">💭</span>
-                <span className="text-white font-medium text-sm">Send a mood</span>
-              </div>
-              <span className="text-white/40">→</span>
-            </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setMoodOpen(true)}
+                className="w-full glass rounded-2xl p-4 flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">💭</span>
+                  <span className="text-white font-medium text-sm">Send a mood</span>
+                </div>
+                <span className="text-white/40 text-sm">→</span>
+              </motion.button>
 
-            {isPaired && <EmergencyAttention />}
-          </div>
-
-          {/* Bottom nav */}
-          <motion.nav
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="fixed bottom-0 left-0 right-0 glass-strong border-t border-white/10 px-4 py-3 flex justify-around items-center"
-          >
-            <button onClick={() => navigate('/home')} className="flex flex-col items-center gap-1">
-              <span className="text-xl">🏠</span>
-              <span className="text-white/80 text-[10px] font-bold">Home</span>
-            </button>
-            <button onClick={() => navigate('/memories')} className="flex flex-col items-center gap-1">
-              <span className="text-xl">💌</span>
-              <span className="text-white/60 text-[10px]">Memories</span>
-            </button>
-            <button onClick={() => navigate('/stats')} className="flex flex-col items-center gap-1">
-              <span className="text-xl">📊</span>
-              <span className="text-white/60 text-[10px]">Stats</span>
-            </button>
-            <button onClick={() => navigate('/settings')} className="flex flex-col items-center gap-1">
-              <span className="text-xl">⚙️</span>
-              <span className="text-white/60 text-[10px]">Settings</span>
-            </button>
-          </motion.nav>
+              <EmergencyAttention />
+            </div>
+          )}
         </div>
 
+        <BottomNav active="home" />
         <MoodPicker isOpen={moodOpen} onClose={() => setMoodOpen(false)} />
       </div>
     </ThemeBackground>
