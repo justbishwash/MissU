@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import ThemeBackground from '../components/ThemeBackground';
+import BottomNav from '../components/BottomNav';
 import { useAuthStore } from '../store/useAuthStore';
 import { useCoupleStore } from '../store/useCoupleStore';
 import { useMemoriesStore } from '../store/useMemoriesStore';
@@ -301,7 +303,8 @@ export default function MemoriesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-400 via-rose-400 to-purple-500 animate-gradient px-5 py-6 pb-28">
+    <ThemeBackground>
+    <div className="px-5 py-6 pb-28">
       <div className="max-w-md mx-auto">
         {/* Header */}
         <motion.div
@@ -377,29 +380,8 @@ export default function MemoriesPage() {
         uploading={uploading}
       />
 
-      {/* Bottom nav */}
-      <motion.nav
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="fixed bottom-0 left-0 right-0 glass-strong border-t border-white/10 px-6 py-3 flex justify-around items-center"
-      >
-        <button onClick={() => navigate('/home')} className="flex flex-col items-center gap-1">
-          <span className="text-xl">🏠</span>
-          <span className="text-white/60 text-[10px]">Home</span>
-        </button>
-        <button onClick={() => navigate('/memories')} className="flex flex-col items-center gap-1">
-          <span className="text-xl">💌</span>
-          <span className="text-white/80 text-[10px] font-bold">Memories</span>
-        </button>
-        <button onClick={() => navigate('/stats')} className="flex flex-col items-center gap-1">
-          <span className="text-xl">📊</span>
-          <span className="text-white/60 text-[10px]">Stats</span>
-        </button>
-        <button onClick={() => navigate('/settings')} className="flex flex-col items-center gap-1">
-          <span className="text-xl">⚙️</span>
-          <span className="text-white/60 text-[10px]">Settings</span>
-        </button>
-      </motion.nav>
     </div>
+    <BottomNav active="memories" />
+    </ThemeBackground>
   );
 }

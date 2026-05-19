@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import GlassCard from '../components/GlassCard';
+import ThemeBackground from '../components/ThemeBackground';
+import BottomNav from '../components/BottomNav';
 import { useAuthStore } from '../store/useAuthStore';
 import { useCoupleStore } from '../store/useCoupleStore';
 import { useNotificationStore } from '../store/useNotificationStore';
@@ -59,13 +61,16 @@ export default function StatsPage() {
     }
   }, [user, getStats]);
 
+  // Days together: prefer the user-set anniversary; fall back to paired_at.
   const getDaysTogether = () => {
-    if (!couple?.paired_at) return 0;
-    return Math.floor((Date.now() - new Date(couple.paired_at).getTime()) / (1000 * 60 * 60 * 24));
+    const anchor = couple?.anniversary_at || couple?.anniversary_date || couple?.paired_at;
+    if (!anchor) return 0;
+    return Math.floor((Date.now() - new Date(anchor).getTime()) / (1000 * 60 * 60 * 24));
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-400 via-rose-400 to-purple-500 animate-gradient px-6 py-8 pb-24">
+    <ThemeBackground>
+    <div className="px-6 py-8 pb-28">
       <div className="max-w-md mx-auto">
         {/* Header */}
         <motion.div
@@ -150,29 +155,8 @@ export default function StatsPage() {
         </GlassCard>
       </div>
 
-      {/* Bottom nav */}
-      <motion.nav
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="fixed bottom-0 left-0 right-0 glass-strong border-t border-white/10 px-4 py-3 flex justify-around items-center"
-      >
-        <button onClick={() => navigate('/home')} className="flex flex-col items-center gap-1">
-          <span className="text-xl">🏠</span>
-          <span className="text-white/60 text-[10px]">Home</span>
-        </button>
-        <button onClick={() => navigate('/memories')} className="flex flex-col items-center gap-1">
-          <span className="text-xl">💌</span>
-          <span className="text-white/60 text-[10px]">Memories</span>
-        </button>
-        <button onClick={() => navigate('/stats')} className="flex flex-col items-center gap-1">
-          <span className="text-xl">📊</span>
-          <span className="text-white/80 text-[10px] font-bold">Stats</span>
-        </button>
-        <button onClick={() => navigate('/settings')} className="flex flex-col items-center gap-1">
-          <span className="text-xl">⚙️</span>
-          <span className="text-white/60 text-[10px]">Settings</span>
-        </button>
-      </motion.nav>
     </div>
+    <BottomNav active="stats" />
+    </ThemeBackground>
   );
 }

@@ -5,6 +5,7 @@ import { useCoupleStore } from '../store/useCoupleStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useThemeStore } from '../store/useThemeStore';
 import ThemeBackground from '../components/ThemeBackground';
+import BottomNav from '../components/BottomNav';
 import AvatarUpload from '../components/AvatarUpload';
 import AnniversaryEditor from '../components/AnniversaryEditor';
 import NicknameEditor from '../components/NicknameEditor';
@@ -231,29 +232,8 @@ export default function SettingsPage() {
           </motion.div>
         </div>
 
-        <motion.nav
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-0 left-0 right-0 glass-strong border-t border-white/10 px-4 py-3 flex justify-around items-center"
-        >
-          <button onClick={() => navigate('/home')} className="flex flex-col items-center gap-1">
-            <span className="text-xl">🏠</span>
-            <span className="text-white/60 text-[10px]">Home</span>
-          </button>
-          <button onClick={() => navigate('/memories')} className="flex flex-col items-center gap-1">
-            <span className="text-xl">💌</span>
-            <span className="text-white/60 text-[10px]">Memories</span>
-          </button>
-          <button onClick={() => navigate('/stats')} className="flex flex-col items-center gap-1">
-            <span className="text-xl">📊</span>
-            <span className="text-white/60 text-[10px]">Stats</span>
-          </button>
-          <button onClick={() => navigate('/settings')} className="flex flex-col items-center gap-1">
-            <span className="text-xl">⚙️</span>
-            <span className="text-white/80 text-[10px] font-bold">Settings</span>
-          </button>
-        </motion.nav>
       </div>
+      <BottomNav active="settings" />
     </ThemeBackground>
   );
 }
