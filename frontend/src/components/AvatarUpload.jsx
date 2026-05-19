@@ -43,7 +43,10 @@ export default function AvatarUpload({ size = 80, allowChange = true }) {
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filename);
       const cacheBustedUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
-      // Update DB
+      // Update DB. We deliberately don't chain .select() / return the row,
+      // because the post-write SELECT re-runs RLS policies which used to hit
+      // a "permission denied for table couples" recursion edge case (now
+      // fixed in migration 005, but keeping this minimal write defensive).
       const { error: updateError } = await supabase
         .from('users')
         .update({ avatar_url: cacheBustedUrl })
