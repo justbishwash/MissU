@@ -62,39 +62,58 @@ export const useAuthStore = create(
       ensureProfile: async (authUser) => {
         if (!authUser?.id) return null;
 
-        const { data: existing } = await supabase
+        // 1. Try to read the profile (the DB trigger from migration 004
+        //    should have already created it on signup).
+        const { data: existing, error: readError } = await supabase
           .from('users')
           .select('*')
           .eq('id', authUser.id)
           .maybeSingle();
 
+        if (readError) {
+          console.error('[ensureProfile] read failed:', readError);
+        }
         if (existing) {
           set({ profile: existing });
           return existing;
         }
 
+        // 2. No row yet — fall back to a client-side upsert. This works as
+        //    long as the RLS INSERT policy is in place. If migration 004 IS
+        //    deployed, this path should rarely fire.
         const fallbackNickname =
           authUser.user_metadata?.full_name ||
           authUser.user_metadata?.name ||
           authUser.email?.split('@')[0] ||
           'You';
 
-        const { data: created, error } = await supabase
+        const { data: created, error: writeError } = await supabase
           .from('users')
-          .upsert({
-            id: authUser.id,
-            nickname: fallbackNickname.slice(0, 20),
-            avatar_url: authUser.user_metadata?.avatar_url || null,
-          })
+          .upsert(
+            {
+              id: authUser.id,
+              nickname: fallbackNickname.slice(0, 20),
+              avatar_url: authUser.user_metadata?.avatar_url || null,
+            },
+            { onConflict: 'id' }
+          )
           .select()
           .maybeSingle();
 
-        if (error) {
-          console.error('Failed to ensure profile:', error);
+        if (writeError) {
+          // Most common cause: migration 004 not run AND RLS insert policy
+          // not in place. Log loudly so it's visible in the browser console.
+          console.error(
+            '[ensureProfile] upsert failed — run backend/migrations/004_auto_profile_trigger.sql in Supabase. Error:',
+            writeError
+          );
           return null;
         }
-        if (created) set({ profile: created });
-        return created;
+        if (created) {
+          set({ profile: created });
+          return created;
+        }
+        return null;
       },
 
       signInWithOtp: async (email) => {
