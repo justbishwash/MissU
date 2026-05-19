@@ -52,20 +52,38 @@ export const useCoupleStore = create((set, get) => ({
   },
 
   generateInviteCode: async (userId) => {
-    // Generate 6-digit code
+    if (!userId) return { error: 'Not signed in' };
+
+    // Defensive: make sure the user row exists before inserting an invite code,
+    // because invite_codes.creator_id references public.users(id). If signup
+    // happened via OAuth/OTP and ensureProfile hasn't run yet, this would
+    // otherwise fail with a FK violation.
+    const { data: profile } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!profile) {
+      // Auto-create a minimal profile so pairing can proceed
+      await supabase.from('users').upsert({ id: userId, nickname: 'You' });
+    }
+
     const code = String(Math.floor(100000 + Math.random() * 900000));
-    
+
     const { data, error } = await supabase
       .from('invite_codes')
-      .insert({
-        code,
-        creator_id: userId,
-      })
+      .insert({ code, creator_id: userId })
       .select()
       .single();
 
+    if (error) {
+      console.error('generateInviteCode failed:', error);
+      return { error: error.message };
+    }
+
     if (data) set({ inviteCode: data.code });
-    return { code: data?.code, error };
+    return { code: data?.code };
   },
 
   useInviteCode: async (code, userId) => {
