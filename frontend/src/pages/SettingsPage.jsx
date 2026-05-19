@@ -6,6 +6,7 @@ import { useSettingsStore } from '../store/useSettingsStore';
 import { useThemeStore } from '../store/useThemeStore';
 import ThemeBackground from '../components/ThemeBackground';
 import BottomNav from '../components/BottomNav';
+import PageHeader from '../components/PageHeader';
 import AvatarUpload from '../components/AvatarUpload';
 import AnniversaryEditor from '../components/AnniversaryEditor';
 import NicknameEditor from '../components/NicknameEditor';
@@ -78,15 +79,7 @@ export default function SettingsPage() {
     <ThemeBackground>
       <div className="px-6 py-8 pb-24">
         <div className="max-w-md mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between mb-6"
-          >
-            <button onClick={() => navigate('/home')} className="text-white/60 text-2xl">←</button>
-            <h1 className="text-white font-bold text-xl">Settings ⚙️</h1>
-            <div className="w-8" />
-          </motion.div>
+          <PageHeader title="Settings" />
 
           {/* Profile with avatar upload */}
           <motion.div

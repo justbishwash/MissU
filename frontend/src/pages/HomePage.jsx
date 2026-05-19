@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { Mail } from 'lucide-react';
 import MissYouButton from '../components/MissYouButton';
 import FloatingHearts from '../components/FloatingHearts';
 import MoodPicker from '../components/MoodPicker';
@@ -86,7 +87,7 @@ export default function HomePage() {
               className="relative glass rounded-full w-11 h-11 flex items-center justify-center"
               aria-label="Inbox"
             >
-              <span className="text-base">💌</span>
+              <Mail size={20} strokeWidth={2} className="text-white/85" />
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center border-2 border-white/30">
                   {unreadCount > 9 ? '9+' : unreadCount}
@@ -177,10 +178,12 @@ export default function HomePage() {
             </>
           )}
 
-          {/* Main button */}
-          <div className="flex-1 flex items-center justify-center my-4 min-h-[200px]">
-            <MissYouButton />
-          </div>
+          {/* Main button — only when paired */}
+          {isPaired && (
+            <div className="flex-1 flex items-center justify-center my-4 min-h-[200px]">
+              <MissYouButton />
+            </div>
+          )}
 
           {/* Bottom controls */}
           {isPaired && (

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { Plus } from 'lucide-react';
 import ThemeBackground from '../components/ThemeBackground';
 import BottomNav from '../components/BottomNav';
+import PageHeader from '../components/PageHeader';
 import { useAuthStore } from '../store/useAuthStore';
 import { useCoupleStore } from '../store/useCoupleStore';
 import { useMemoriesStore } from '../store/useMemoriesStore';
@@ -306,22 +308,19 @@ export default function MemoriesPage() {
     <ThemeBackground>
     <div className="px-5 py-6 pb-28">
       <div className="max-w-md mx-auto">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between mb-5"
-        >
-          <button onClick={() => navigate('/home')} className="text-white/70 text-2xl">←</button>
-          <h1 className="text-white font-bold text-xl">Memories 💌</h1>
-          <button
-            onClick={() => setSheetOpen(true)}
-            disabled={!isPaired}
-            className="bg-white text-pink-500 w-9 h-9 rounded-full font-bold shadow-md disabled:opacity-40"
-          >
-            +
-          </button>
-        </motion.div>
+        <PageHeader
+          title="Memories"
+          right={
+            <button
+              onClick={() => setSheetOpen(true)}
+              disabled={!isPaired}
+              aria-label="Add memory"
+              className="bg-white text-pink-500 w-9 h-9 rounded-full font-bold shadow-md disabled:opacity-40 flex items-center justify-center active:scale-95 transition-transform"
+            >
+              <Plus size={20} strokeWidth={2.6} />
+            </button>
+          }
+        />
 
         {/* Empty state */}
         {!isPaired ? (
