@@ -8,17 +8,25 @@ import { useAuthStore } from '../store/useAuthStore';
  * a new one to the `avatars` bucket. Updates users.avatar_url on success.
  */
 export default function AvatarUpload({ size = 80, allowChange = true }) {
-  const { profile, user, fetchProfile } = useAuthStore();
+  const { profile, user, setProfile } = useAuthStore();
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !user?.id) return;
 
     setUploading(true);
+    setError('');
     try {
-      const ext = file.name.split('.').pop() || 'jpg';
+      // File too big? (5 MB cap)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image too large (max 5 MB)');
+        return;
+      }
+
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
       // Stable filename overwrites prior avatar; user folder enforced by RLS
       const filename = `${user.id}/avatar.${ext}`;
 
@@ -27,16 +35,33 @@ export default function AvatarUpload({ size = 80, allowChange = true }) {
         .upload(filename, file, { contentType: file.type, upsert: true });
 
       if (uploadError) {
-        console.error(uploadError);
-        alert('Upload failed. Make sure the avatars bucket exists.');
+        console.error('Avatar upload failed:', uploadError);
+        setError(uploadError.message || 'Upload failed');
         return;
       }
 
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filename);
       const cacheBustedUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
-      await supabase.from('users').update({ avatar_url: cacheBustedUrl }).eq('id', user.id);
-      await fetchProfile(user.id);
+      // Update DB
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ avatar_url: cacheBustedUrl })
+        .eq('id', user.id);
+
+      if (updateError) {
+        console.error('avatar_url update failed:', updateError);
+        setError(updateError.message);
+        return;
+      }
+
+      // Update store directly so UI reflects immediately — don't rely on a
+      // re-fetch which can race against the persist middleware re-hydrating
+      // a stale value.
+      setProfile({ ...(profile || { id: user.id }), avatar_url: cacheBustedUrl });
+    } catch (err) {
+      console.error(err);
+      setError(String(err?.message || err));
     } finally {
       setUploading(false);
     }
@@ -53,7 +78,15 @@ export default function AvatarUpload({ size = 80, allowChange = true }) {
         } ${uploading ? 'opacity-60 animate-pulse' : ''}`}
       >
         {profile?.avatar_url ? (
-          <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+          <img
+            src={profile.avatar_url}
+            alt=""
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              // Hide broken image so the fallback emoji shows through
+              e.currentTarget.style.display = 'none';
+            }}
+          />
         ) : (
           <span style={{ fontSize: size * 0.45 }}>😊</span>
         )}
@@ -76,6 +109,12 @@ export default function AvatarUpload({ size = 80, allowChange = true }) {
             {uploading ? '…' : '📷'}
           </button>
         </>
+      )}
+
+      {error && (
+        <p className="text-rose-200 text-[10px] text-center mt-1 max-w-[120px]">
+          {error}
+        </p>
       )}
     </div>
   );

@@ -5,29 +5,53 @@ import { useAuthStore } from '../store/useAuthStore';
 
 export default function SplashPage() {
   const navigate = useNavigate();
-  const { user, loading, initialize } = useAuthStore();
+  const { user, loading } = useAuthStore();
 
+  // Hard fallback: never let the splash sit longer than 3.5s.
+  // If `loading` somehow stays true (auth init hangs, RLS error, etc), we
+  // still navigate so the user isn't trapped.
   useEffect(() => {
-    initialize();
-  }, [initialize]);
+    const minDisplayMs = 1500; // let the logo breathe
+    const start = Date.now();
 
-  useEffect(() => {
-    if (loading) return;
-    
-    const timer = setTimeout(() => {
-      if (user) {
-        navigate('/home', { replace: true });
-      } else {
-        navigate('/login', { replace: true });
+    const decide = () => {
+      const elapsed = Date.now() - start;
+      const wait = Math.max(0, minDisplayMs - elapsed);
+      setTimeout(() => {
+        const { user: latestUser } = useAuthStore.getState();
+        if (latestUser) navigate('/home', { replace: true });
+        else navigate('/login', { replace: true });
+      }, wait);
+    };
+
+    if (!loading) {
+      // Auth state already known
+      decide();
+      return;
+    }
+
+    // Wait until loading flips OR 3.5s passes (whichever is first)
+    const unsub = useAuthStore.subscribe((s) => {
+      if (!s.loading) {
+        unsub();
+        clearTimeout(hardTimeout);
+        decide();
       }
-    }, 2500);
+    });
 
-    return () => clearTimeout(timer);
-  }, [user, loading, navigate]);
+    const hardTimeout = setTimeout(() => {
+      unsub();
+      decide();
+    }, 3500);
+
+    return () => {
+      unsub();
+      clearTimeout(hardTimeout);
+    };
+  }, [navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-pink-400 via-rose-400 to-purple-500 animate-gradient relative overflow-hidden">
-      {/* Background hearts */}
       <motion.div
         animate={{ y: [0, -20, 0] }}
         transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
@@ -57,7 +81,6 @@ export default function SplashPage() {
         💫
       </motion.div>
 
-      {/* Logo */}
       <motion.div
         initial={{ scale: 0, rotate: -180 }}
         animate={{ scale: 1, rotate: 0 }}
@@ -67,31 +90,28 @@ export default function SplashPage() {
         ❤️
       </motion.div>
 
-      {/* App name */}
       <motion.h1
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
+        transition={{ delay: 0.3 }}
         className="text-5xl font-black text-white tracking-tight mb-2"
       >
         MissU
       </motion.h1>
 
-      {/* Tagline */}
       <motion.p
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.9 }}
+        transition={{ delay: 0.5 }}
         className="text-white/80 text-lg font-light"
       >
         Closer than distance.
       </motion.p>
 
-      {/* Loading indicator */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1.5 }}
+        transition={{ delay: 0.8 }}
         className="mt-12"
       >
         <motion.div

@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
 
+let authStateSubscribed = false; // guard so we never double-subscribe
+
 export const useAuthStore = create(
   persist(
     (set, get) => ({
@@ -23,15 +25,19 @@ export const useAuthStore = create(
             await get().ensureProfile(session.user);
           }
 
-          // Stay subscribed so OTP/OAuth callbacks update auth state immediately
-          supabase.auth.onAuthStateChange(async (_event, newSession) => {
-            if (newSession?.user) {
-              set({ session: newSession, user: newSession.user });
-              await get().ensureProfile(newSession.user);
-            } else {
-              set({ session: null, user: null, profile: null });
-            }
-          });
+          // Subscribe exactly once, even if initialize() is called multiple times
+          // (StrictMode in dev can double-invoke effects).
+          if (!authStateSubscribed) {
+            authStateSubscribed = true;
+            supabase.auth.onAuthStateChange(async (_event, newSession) => {
+              if (newSession?.user) {
+                set({ session: newSession, user: newSession.user });
+                await get().ensureProfile(newSession.user);
+              } else {
+                set({ session: null, user: null, profile: null });
+              }
+            });
+          }
         } catch (error) {
           console.error('Auth init error:', error);
         } finally {
@@ -44,7 +50,7 @@ export const useAuthStore = create(
           .from('users')
           .select('*')
           .eq('id', userId)
-          .single();
+          .maybeSingle();
         if (data) set({ profile: data });
         return data;
       },
@@ -52,13 +58,10 @@ export const useAuthStore = create(
       /**
        * Ensures a row exists in public.users for this auth user.
        * Critical because pairing's invite_codes table has a FK to users.id.
-       * Without this, OTP / Google sign-ins never get a profile row created
-       * (the legacy createProfile() was only called from the Guest flow).
        */
       ensureProfile: async (authUser) => {
         if (!authUser?.id) return null;
 
-        // Try to fetch existing profile first
         const { data: existing } = await supabase
           .from('users')
           .select('*')
@@ -70,8 +73,6 @@ export const useAuthStore = create(
           return existing;
         }
 
-        // No profile yet — auto-create one with a sensible default nickname.
-        // User can rename in Settings.
         const fallbackNickname =
           authUser.user_metadata?.full_name ||
           authUser.user_metadata?.name ||
@@ -86,21 +87,27 @@ export const useAuthStore = create(
             avatar_url: authUser.user_metadata?.avatar_url || null,
           })
           .select()
-          .single();
+          .maybeSingle();
 
         if (error) {
           console.error('Failed to ensure profile:', error);
           return null;
         }
-        set({ profile: created });
+        if (created) set({ profile: created });
         return created;
       },
 
       signInWithOtp: async (email) => {
-        const { error } = await supabase.auth.signInWithOtp({ email });
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: {
+            emailRedirectTo: window.location.origin,
+          },
+        });
         return { error };
       },
 
+      // Kept for future use, not exposed in the UI
       signInWithGoogle: async () => {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
@@ -129,7 +136,7 @@ export const useAuthStore = create(
             avatar_url: avatarUrl || null,
           })
           .select()
-          .single();
+          .maybeSingle();
 
         if (data) set({ profile: data });
         return { data, error };
