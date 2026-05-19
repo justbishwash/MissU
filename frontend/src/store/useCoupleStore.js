@@ -126,27 +126,43 @@ export const useCoupleStore = create((set, get) => ({
     // Make sure both user rows exist before inserting couple (FK)
     await supabase.from('users').upsert({ id: userId });
 
+    const u1 = invite.creator_id < userId ? invite.creator_id : userId;
+    const u2 = invite.creator_id < userId ? userId : invite.creator_id;
+
+    // Use upsert so a pre-existing (possibly inactive) couple row gets
+    // reactivated instead of triggering a unique-constraint violation.
+    // This mirrors the migration-009 RPC behavior for clients on the
+    // client-side fallback path.
     const { data: couple, error: coupleErr } = await supabase
       .from('couples')
-      .insert({
-        user1_id: invite.creator_id < userId ? invite.creator_id : userId,
-        user2_id: invite.creator_id < userId ? userId : invite.creator_id,
-      })
+      .upsert(
+        {
+          user1_id: u1,
+          user2_id: u2,
+          is_active: true,
+          paired_at: new Date().toISOString(),
+        },
+        { onConflict: 'user1_id,user2_id' }
+      )
       .select()
       .single();
 
     if (coupleErr) {
-      console.error('couple insert failed:', coupleErr);
+      console.error('couple upsert failed:', coupleErr);
       return { error: coupleErr.message || 'Could not create couple.' };
     }
 
-    // ONLY mark code used after successful couple insert
+    // ONLY mark code used after successful couple insert/upsert
     await supabase
       .from('invite_codes')
       .update({ is_used: true, used_by: userId })
       .eq('id', invite.id);
 
-    await supabase.from('streaks').insert({ couple_id: couple.id });
+    // Streak row — upsert so it works for reactivated couples
+    await supabase
+      .from('streaks')
+      .upsert({ couple_id: couple.id }, { onConflict: 'couple_id' });
+
     await get().fetchCouple(userId);
     return { ok: true, coupleId: couple.id };
   },
