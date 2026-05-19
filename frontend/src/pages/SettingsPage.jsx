@@ -5,7 +5,10 @@ import { useCoupleStore } from '../store/useCoupleStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useThemeStore } from '../store/useThemeStore';
 import ThemeBackground from '../components/ThemeBackground';
+import AvatarUpload from '../components/AvatarUpload';
+import AnniversaryEditor from '../components/AnniversaryEditor';
 import { THEMES, isThemeUnlocked, getThemeUnlockText } from '../lib/themes';
+import { MOOD_META } from '../lib/moodMeta';
 
 function ToggleRow({ emoji, label, desc, value, onChange }) {
   return (
@@ -39,6 +42,7 @@ export default function SettingsPage() {
   const { partner, couple, streak, disconnect, isPaired } = useCoupleStore();
   const {
     notifications, locationSharing, approximateMode, vibration, sound,
+    mutedMoods, toggleMoodMute,
     setNotifications, setLocationSharing, setApproximateMode, setVibration, setSound,
   } = useSettingsStore();
   const { activeTheme, setTheme } = useThemeStore();
@@ -62,10 +66,11 @@ export default function SettingsPage() {
   const handleThemeSelect = (themeId) => {
     const result = setTheme(themeId, { streak: currentStreak, daysTogether });
     if (result?.error) {
-      const unlock = getThemeUnlockText(themeId);
-      alert(`Locked! Reach ${unlock} to unlock this theme 🔒`);
+      alert(`Locked! Reach ${getThemeUnlockText(themeId)} to unlock this theme 🔒`);
     }
   };
+
+  const moodEntries = Object.entries(MOOD_META).filter(([k]) => k !== 'attention');
 
   return (
     <ThemeBackground>
@@ -81,19 +86,14 @@ export default function SettingsPage() {
             <div className="w-8" />
           </motion.div>
 
+          {/* Profile with avatar upload */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="glass rounded-2xl p-4 mb-4"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
-                ) : (
-                  <span className="text-xl">😊</span>
-                )}
-              </div>
+            <div className="flex items-center gap-4">
+              <AvatarUpload size={64} />
               <div>
                 <p className="text-white font-bold">{profile?.nickname || 'You'}</p>
                 <p className="text-white/50 text-xs">
@@ -103,6 +103,20 @@ export default function SettingsPage() {
             </div>
           </motion.div>
 
+          {/* Anniversary */}
+          {isPaired && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="glass rounded-2xl p-4 mb-4"
+            >
+              <h3 className="text-white/60 text-xs font-bold uppercase tracking-wider mb-2">Relationship</h3>
+              <AnniversaryEditor />
+            </motion.div>
+          )}
+
+          {/* Notifications */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -115,6 +129,40 @@ export default function SettingsPage() {
             <ToggleRow emoji="🔊" label="Sound" desc="Cute notification sounds" value={sound} onChange={setSound} />
           </motion.div>
 
+          {/* Per-mood mute */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="glass rounded-2xl p-4 mb-4"
+          >
+            <h3 className="text-white/60 text-xs font-bold uppercase tracking-wider mb-1">Mute by Mood</h3>
+            <p className="text-white/40 text-xs mb-3">Silence sound + haptic for specific moods (overlay still shows)</p>
+            <div className="grid grid-cols-3 gap-2">
+              {moodEntries.map(([type, meta]) => {
+                const muted = (mutedMoods || []).includes(type);
+                return (
+                  <button
+                    key={type}
+                    onClick={() => toggleMoodMute(type)}
+                    className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
+                      muted ? 'bg-white/5 opacity-50' : 'bg-white/10'
+                    }`}
+                  >
+                    <span className="text-xl">{meta.emoji}</span>
+                    <span className="text-white text-[10px] truncate w-full text-center">
+                      {meta.label}
+                    </span>
+                    <span className="text-white/50 text-[9px]">
+                      {muted ? '🔇 muted' : '🔊 on'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+
+          {/* Location */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -126,7 +174,7 @@ export default function SettingsPage() {
             <ToggleRow emoji="🌐" label="Approximate Mode" desc="Hide exact location (~1km)" value={approximateMode} onChange={setApproximateMode} />
           </motion.div>
 
-          {/* Theme selection with unlock states */}
+          {/* Theme */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -161,6 +209,7 @@ export default function SettingsPage() {
             </div>
           </motion.div>
 
+          {/* Danger zone */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
