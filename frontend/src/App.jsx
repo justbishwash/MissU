@@ -11,6 +11,7 @@ import NotificationPermissionFlow from './components/NotificationPermissionFlow'
 import NotificationInbox from './components/NotificationInbox';
 import InstallBanner from './components/InstallBanner';
 import FirstMetPrompt from './components/FirstMetPrompt';
+import RouteGuard from './components/RouteGuard';
 
 const SplashPage = lazy(() => import('./pages/SplashPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -77,12 +78,12 @@ export default function App() {
           <Routes>
             <Route path="/" element={<SplashPage />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/pairing" element={<PairingPage />} />
-            <Route path="/scan" element={<QRScannerPage />} />
-            <Route path="/home" element={<HomePage />} />
-            <Route path="/memories" element={<MemoriesPage />} />
-            <Route path="/stats" element={<StatsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/pairing" element={<RouteGuard><PairingPage /></RouteGuard>} />
+            <Route path="/scan" element={<RouteGuard><QRScannerPage /></RouteGuard>} />
+            <Route path="/home" element={<RouteGuard><HomePage /></RouteGuard>} />
+            <Route path="/memories" element={<RouteGuard><MemoriesPage /></RouteGuard>} />
+            <Route path="/stats" element={<RouteGuard><StatsPage /></RouteGuard>} />
+            <Route path="/settings" element={<RouteGuard><SettingsPage /></RouteGuard>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

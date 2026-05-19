@@ -6,6 +6,22 @@
   --color-rose-soft: #fda4af;
   --color-love-gradient-start: #ff6b9d;
   --color-love-gradient-end: #c084fc;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display',
+    'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+/* iOS-style global typography */
+html, body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display',
+    'SF Pro Text', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.011em;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
 }
 
 /* Custom scrollbar */

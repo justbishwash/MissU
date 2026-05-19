@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import GlassCard from '../components/GlassCard';
 import ThemeBackground from '../components/ThemeBackground';
 import BottomNav from '../components/BottomNav';
+import PageHeader from '../components/PageHeader';
 import { useAuthStore } from '../store/useAuthStore';
 import { useCoupleStore } from '../store/useCoupleStore';
 import { useNotificationStore } from '../store/useNotificationStore';
@@ -72,16 +73,7 @@ export default function StatsPage() {
     <ThemeBackground>
     <div className="px-6 py-8 pb-28">
       <div className="max-w-md mx-auto">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between mb-6"
-        >
-          <button onClick={() => navigate('/home')} className="text-white/60 text-2xl">←</button>
-          <h1 className="text-white font-bold text-xl">Love Stats 📊</h1>
-          <div className="w-8" />
-        </motion.div>
+        <PageHeader title="Love Stats" />
 
         {/* Stats grid */}
         <div className="grid grid-cols-2 gap-3 mb-6">
