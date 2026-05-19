@@ -134,3 +134,56 @@ On Android Chrome:
 - Theme unlocks + anniversary rewards
 - Emergency attention mode
 - Quick-reply notification actions
+
+
+
+---
+
+## Phase 2 Setup Additions
+
+### 6. Run the Phase 2 migration
+
+In Supabase SQL Editor, run `backend/migrations/002_memories.sql`. This adds:
+- `memories` table (image / voice / note / anniversary types)
+- `theme_unlocks` table (per-couple theme rewards)
+- `memories` storage bucket (public, with auth-only upload)
+- RLS policies for both
+
+### 7. Deploy the Edge Function (recommended for production)
+
+The `send-notification` Edge Function dispatches OneSignal pushes server-side
+so your REST API key never ships to the browser. It also enforces rate limits
+and verifies couple membership.
+
+```bash
+# install Supabase CLI: https://supabase.com/docs/guides/local-development/cli/getting-started
+supabase link --project-ref YOUR_PROJECT_REF
+
+# Set secrets
+supabase secrets set ONESIGNAL_APP_ID=your-app-id
+supabase secrets set ONESIGNAL_REST_API_KEY=your-rest-key
+
+# Deploy
+supabase functions deploy send-notification --no-verify-jwt
+```
+
+Until you deploy this, the app falls back to client-side DB inserts (Phase 1
+behavior) — push notifications still work via OneSignal's web SDK, but
+without server-side rate limiting.
+
+### 8. New routes added in Phase 2
+
+| Route | Purpose |
+|-------|---------|
+| `/scan` | Camera-based QR pairing (uses `qr-scanner` lib) |
+| `/memories` | Couple scrapbook (photos, voice, notes) |
+
+### 9. New features
+
+- **Memories scrapbook** — image upload, in-browser voice recording (MediaRecorder), text notes, timeline view
+- **QR camera scanner** — auto-detects 6-digit codes from QR
+- **Mini love map** — Leaflet with pastel theme, heart markers, toggle on home
+- **Emergency Need Attention** — confirm dialog, urgent vibration pattern, server-side priority flag
+- **Theme system** — 5 themes with unlock criteria (streak / days together)
+- **Quick-reply actions** — service worker handles Miss You Too / Send Hug from notification, dispatches reverse notification automatically
+- **Server-side notification dispatch** — Edge Function with rate limiting, couple verification, and OneSignal integration

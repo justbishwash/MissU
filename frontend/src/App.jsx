@@ -1,18 +1,21 @@
 import { useEffect, lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { useAuthStore } from './store/useAuthStore';
+import { useCoupleStore } from './store/useCoupleStore';
 import { initOneSignal } from './services/onesignal';
+import { dispatchNotification } from './services/notifications';
 
 // Lazy load pages
 const SplashPage = lazy(() => import('./pages/SplashPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const PairingPage = lazy(() => import('./pages/PairingPage'));
+const QRScannerPage = lazy(() => import('./pages/QRScannerPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
+const MemoriesPage = lazy(() => import('./pages/MemoriesPage'));
 const StatsPage = lazy(() => import('./pages/StatsPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 
-// Loading fallback
 function LoadingScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-400 via-rose-400 to-purple-500">
@@ -21,32 +24,58 @@ function LoadingScreen() {
   );
 }
 
+// Listens for service-worker quick-reply actions and dispatches them
+function NotificationActionListener() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+
+    const handler = async (event) => {
+      const { type, action } = event.data || {};
+      if (type !== 'NOTIFICATION_ACTION') return;
+
+      const partner = useCoupleStore.getState().partner;
+      if (!partner?.id) {
+        navigate('/home');
+        return;
+      }
+
+      if (action === 'miss-back') {
+        await dispatchNotification({ receiverId: partner.id, type: 'miss' });
+      } else if (action === 'send-hug') {
+        await dispatchNotification({ receiverId: partner.id, type: 'hug' });
+      }
+      navigate('/home');
+    };
+
+    navigator.serviceWorker.addEventListener('message', handler);
+    return () => navigator.serviceWorker.removeEventListener('message', handler);
+  }, [navigate]);
+
+  return null;
+}
+
 export default function App() {
-  const { initialize, user, loading } = useAuthStore();
+  const { initialize } = useAuthStore();
 
   useEffect(() => {
     initialize();
     initOneSignal();
   }, [initialize]);
 
-  // Listen for auth state changes
-  useEffect(() => {
-    const { data: { subscription } } = useAuthStore.getState().session
-      ? { data: { subscription: { unsubscribe: () => {} } } }
-      : { data: { subscription: { unsubscribe: () => {} } } };
-
-    return () => subscription?.unsubscribe();
-  }, []);
-
   return (
     <div className="min-h-screen">
+      <NotificationActionListener />
       <AnimatePresence mode="wait">
         <Suspense fallback={<LoadingScreen />}>
           <Routes>
             <Route path="/" element={<SplashPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/pairing" element={<PairingPage />} />
+            <Route path="/scan" element={<QRScannerPage />} />
             <Route path="/home" element={<HomePage />} />
+            <Route path="/memories" element={<MemoriesPage />} />
             <Route path="/stats" element={<StatsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />

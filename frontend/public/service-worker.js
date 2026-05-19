@@ -70,7 +70,7 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// Notification click handler
+// Notification click handler — handles quick-reply actions
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   
@@ -79,13 +79,23 @@ self.addEventListener('notificationclick', (event) => {
   
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // If a tab is open, focus it and forward the action
       for (const client of clientList) {
         if (client.url.includes(self.location.origin) && 'focus' in client) {
-          client.postMessage({ type: 'NOTIFICATION_ACTION', action });
+          client.postMessage({ 
+            type: 'NOTIFICATION_ACTION', 
+            action: action || 'open',
+            data: event.notification.data,
+          });
           return client.focus();
         }
       }
-      return clients.openWindow(url);
+      // Otherwise open a new window with the action as a URL param
+      // so the app can handle it after auth restores
+      const targetUrl = action 
+        ? `${url}?action=${encodeURIComponent(action)}` 
+        : url;
+      return clients.openWindow(targetUrl);
     })
   );
 });
