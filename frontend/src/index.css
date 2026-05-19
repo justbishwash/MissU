@@ -103,3 +103,24 @@
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
+
+
+
+/* Leaflet — make pastel and remove default marker shadow */
+.leaflet-container {
+  background: #fbe4ef !important;
+  font-family: inherit;
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 16px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(255, 107, 157, 0.2) !important;
+}
+.leaflet-popup-tip {
+  background: rgba(255, 255, 255, 0.95) !important;
+}
+.custom-heart-marker {
+  background: transparent !important;
+  border: none !important;
+}
