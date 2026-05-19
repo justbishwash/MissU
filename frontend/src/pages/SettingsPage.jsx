@@ -7,6 +7,7 @@ import { useThemeStore } from '../store/useThemeStore';
 import ThemeBackground from '../components/ThemeBackground';
 import AvatarUpload from '../components/AvatarUpload';
 import AnniversaryEditor from '../components/AnniversaryEditor';
+import NicknameEditor from '../components/NicknameEditor';
 import { THEMES, isThemeUnlocked, getThemeUnlockText } from '../lib/themes';
 import { MOOD_META } from '../lib/moodMeta';
 
@@ -94,9 +95,9 @@ export default function SettingsPage() {
           >
             <div className="flex items-center gap-4">
               <AvatarUpload size={64} />
-              <div>
-                <p className="text-white font-bold">{profile?.nickname || 'You'}</p>
-                <p className="text-white/50 text-xs">
+              <div className="flex-1 min-w-0">
+                <NicknameEditor />
+                <p className="text-white/50 text-xs mt-0.5">
                   {isPaired ? `Paired with ${partner?.nickname || 'partner'}` : 'Not paired yet'}
                 </p>
               </div>
