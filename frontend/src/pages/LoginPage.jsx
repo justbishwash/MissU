@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
+import AvatarUpload from '../components/AvatarUpload';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -56,16 +57,13 @@ export default function LoginPage() {
           animate={{ opacity: 1, y: 0 }}
           className="glass-strong rounded-3xl p-8 w-full max-w-sm"
         >
-          <motion.span
-            animate={{ scale: [1, 1.1, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="text-5xl block text-center mb-4"
-          >
-            👋
-          </motion.span>
-          <h2 className="text-white text-xl font-bold text-center mb-2">What should we call you?</h2>
-          <p className="text-white/60 text-sm text-center mb-6">Your partner will see this name</p>
-          
+          <h2 className="text-white text-xl font-bold text-center mb-2">Set up your profile</h2>
+          <p className="text-white/60 text-sm text-center mb-6">Your partner will see this</p>
+
+          <div className="flex justify-center mb-5">
+            <AvatarUpload size={88} />
+          </div>
+
           <form onSubmit={handleNickname} className="space-y-4">
             <input
               type="text"

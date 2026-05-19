@@ -2,21 +2,27 @@ import { useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useCoupleStore } from '../store/useCoupleStore';
-import { playSound, triggerHaptic } from '../lib/sounds';
-import { useSettingsStore } from '../store/useSettingsStore';
+import { useReceivedStore } from '../store/useReceivedStore';
 
+/**
+ * Subscribes the active user to:
+ *   1. New incoming notifications -> enqueues full-screen overlay
+ *   2. Partner profile updates    -> refreshes location/avatar/etc
+ *
+ * Sound + haptic playback now lives in ReceivedNotificationOverlay so the
+ * mood-specific sound/haptic plays in sync with the visual.
+ */
 export function useRealtime(userId) {
   const channelRef = useRef(null);
   const { fetchNotifications } = useNotificationStore();
   const { fetchPartner, partner } = useCoupleStore();
-  const { sound, vibration } = useSettingsStore();
+  const { enqueue } = useReceivedStore();
 
   useEffect(() => {
     if (!userId) return;
 
-    // Subscribe to new notifications for this user
     const channel = supabase
-      .channel('notifications')
+      .channel(`notifications:${userId}`)
       .on(
         'postgres_changes',
         {
@@ -26,9 +32,9 @@ export function useRealtime(userId) {
           filter: `receiver_id=eq.${userId}`,
         },
         (payload) => {
-          // New notification received!
-          if (sound) playSound('receive');
-          if (vibration) triggerHaptic('miss');
+          // Trigger the viral receive moment overlay
+          enqueue(payload.new);
+          // Keep the legacy notification list fresh
           fetchNotifications(userId);
         }
       )
@@ -36,10 +42,10 @@ export function useRealtime(userId) {
 
     channelRef.current = channel;
 
-    // Subscribe to partner presence changes
+    let presenceChannel;
     if (partner?.id) {
-      const presenceChannel = supabase
-        .channel('partner-presence')
+      presenceChannel = supabase
+        .channel(`partner-profile:${partner.id}`)
         .on(
           'postgres_changes',
           {
@@ -48,20 +54,14 @@ export function useRealtime(userId) {
             table: 'users',
             filter: `id=eq.${partner.id}`,
           },
-          () => {
-            fetchPartner(partner.id);
-          }
+          () => fetchPartner(partner.id)
         )
         .subscribe();
-
-      return () => {
-        channel.unsubscribe();
-        presenceChannel.unsubscribe();
-      };
     }
 
     return () => {
       channel.unsubscribe();
+      presenceChannel?.unsubscribe();
     };
-  }, [userId, partner?.id, sound, vibration, fetchNotifications, fetchPartner]);
+  }, [userId, partner?.id, fetchNotifications, fetchPartner, enqueue]);
 }
