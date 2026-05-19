@@ -7,6 +7,7 @@ import MoodPicker from '../components/MoodPicker';
 import DistanceCard from '../components/DistanceCard';
 import StreakCounter from '../components/StreakCounter';
 import EmergencyAttention from '../components/EmergencyAttention';
+import PairingCta from '../components/PairingCta';
 import ThemeBackground from '../components/ThemeBackground';
 import { useAuthStore } from '../store/useAuthStore';
 import { useCoupleStore } from '../store/useCoupleStore';
@@ -22,7 +23,7 @@ export default function HomePage() {
   const [moodOpen, setMoodOpen] = useState(false);
   const [showMap, setShowMap] = useState(false);
 
-  const { user } = useAuthStore();
+  const { user, profile } = useAuthStore();
   const { partner, couple, streak, isPaired, fetchCouple } = useCoupleStore();
   const { setInboxOpen, inbox } = useReceivedStore();
   const { checkPending, showNext, current: currentMilestone } = useMilestonesStore();
@@ -137,7 +138,7 @@ export default function HomePage() {
               {isPaired ? (
                 <>❤️ Connected with {partner?.nickname || 'Your Person'}</>
               ) : (
-                <>Waiting for your person...</>
+                <>Hi {profile?.nickname || 'there'} 👋</>
               )}
             </h2>
 
@@ -164,6 +165,9 @@ export default function HomePage() {
               </motion.div>
             )}
           </motion.div>
+
+          {/* Pairing CTA when not paired */}
+          {!isPaired && <PairingCta />}
 
           {/* Distance */}
           {isPaired && (
