@@ -1,32 +1,32 @@
-// OneSignal Web Push Integration
+// OneSignal Web Push Integration (v16 SDK)
 //
-// Phase 4 wiring:
-//   1. Init the SDK with the app id from env.
-//   2. After init, wait until we have a player_id (push subscription id).
-//   3. Sync that player_id into public.users.onesignal_player_id so the
-//      Edge Function can target the right device when sending pushes.
-//   4. Re-sync whenever the subscription changes (user grants/revokes,
-//      installs as PWA, switches browser, etc).
-//   5. When app is foregrounded, suppress the OneSignal notification —
-//      our in-app ReceivedNotificationOverlay (driven by Supabase Realtime)
-//      handles the visual.
+// Required setup:
+//   1. /OneSignalSDKWorker.js exists at site root (importScripts the SDK worker)
+//   2. VITE_ONESIGNAL_APP_ID is set
+//   3. App is served over HTTPS (Vercel handles this)
+//   4. The OneSignal dashboard's "Site URL" matches your deployed origin
+//
+// On init we:
+//   - Sync the OneSignal player_id (push subscription id) into
+//     public.users.onesignal_player_id so the Edge Function can target this device
+//   - Bind External User Id to the supabase auth uid
+//   - Re-sync on subscription / auth changes
+//   - Suppress OS notifications while page is visible — in-app overlay (driven
+//     by Supabase Realtime) handles foreground UX
 
 import { supabase } from '../lib/supabase';
 
 const ONESIGNAL_APP_ID = import.meta.env.VITE_ONESIGNAL_APP_ID || '';
 
-let initialized = false;
-let initPromise = null;
+let initStarted = false;
+let onesignalReadyResolve;
+const onesignalReady = new Promise((r) => { onesignalReadyResolve = r; });
 
-function loadSdk() {
+function loadSdkOnce() {
   return new Promise((resolve) => {
-    if (window.OneSignal || document.getElementById('onesignal-sdk')) {
-      // Already loading or loaded
+    if (document.getElementById('onesignal-sdk')) {
       const wait = setInterval(() => {
-        if (window.OneSignal) {
-          clearInterval(wait);
-          resolve();
-        }
+        if (window.OneSignalDeferred) { clearInterval(wait); resolve(); }
       }, 50);
       return;
     }
@@ -52,13 +52,7 @@ async function syncPlayerIdToDB(OneSignal) {
       .update({ onesignal_player_id: playerId })
       .eq('id', user.id);
 
-    // Tag the OneSignal player with our supabase user id so notifications
-    // sent via External Id work too.
-    try {
-      await OneSignal.login(user.id);
-    } catch (err) {
-      // login() can throw if already logged in, ignore
-    }
+    try { await OneSignal.login(user.id); } catch { /* already bound */ }
   } catch (err) {
     console.error('[OneSignal] sync player_id failed:', err);
   }
@@ -66,101 +60,98 @@ async function syncPlayerIdToDB(OneSignal) {
 
 export async function initOneSignal() {
   if (!ONESIGNAL_APP_ID) {
-    console.warn('[OneSignal] VITE_ONESIGNAL_APP_ID not set — push notifications disabled.');
+    console.warn('[OneSignal] VITE_ONESIGNAL_APP_ID missing — push disabled.');
     return null;
   }
-  if (initPromise) return initPromise;
+  if (initStarted) return onesignalReady;
+  initStarted = true;
 
-  initPromise = (async () => {
+  await loadSdkOnce();
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+
+  window.OneSignalDeferred.push(async function (OneSignal) {
     try {
-      await loadSdk();
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-
-      window.OneSignalDeferred.push(async function (OneSignal) {
-        if (initialized) return;
-        initialized = true;
-
-        await OneSignal.init({
-          appId: ONESIGNAL_APP_ID,
-          allowLocalhostAsSecureOrigin: true,
-          serviceWorkerParam: { scope: '/onesignal/' },
-          serviceWorkerPath: 'OneSignalSDKWorker.js',
-          notifyButton: { enable: false },
-        });
-
-        // Sync immediately if user is already subscribed
-        await syncPlayerIdToDB(OneSignal);
-
-        // Re-sync whenever the subscription state changes (user grants/revokes,
-        // moves to PWA install, etc).
-        OneSignal.User.PushSubscription.addEventListener('change', async () => {
-          await syncPlayerIdToDB(OneSignal);
-        });
-
-        // When auth state changes (sign in / sign out), re-sync the external id.
-        supabase.auth.onAuthStateChange(async (_event, session) => {
-          if (session?.user) {
-            try { await OneSignal.login(session.user.id); } catch {}
-            await syncPlayerIdToDB(OneSignal);
-          } else {
-            try { await OneSignal.logout(); } catch {}
-          }
-        });
-
-        // Suppress the OS notification while the page is visible — let our
-        // in-app overlay handle the visual instead.
-        OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event) => {
-          event.preventDefault();
-        });
+      await OneSignal.init({
+        appId: ONESIGNAL_APP_ID,
+        // Use OneSignal's default worker path (/OneSignalSDKWorker.js).
+        // Don't override — public/OneSignalSDKWorker.js is served from root.
+        allowLocalhostAsSecureOrigin: true,
+        notifyButton: { enable: false },
       });
 
-      return true;
-    } catch (error) {
-      console.error('[OneSignal] init error:', error);
-      return null;
-    }
-  })();
+      // Sync immediately if already signed in + subscribed
+      await syncPlayerIdToDB(OneSignal);
 
-  return initPromise;
+      // Re-sync on subscription state changes (grant/revoke, install, etc)
+      OneSignal.User.PushSubscription.addEventListener('change', () => {
+        syncPlayerIdToDB(OneSignal);
+      });
+
+      // Re-sync on supabase auth changes
+      supabase.auth.onAuthStateChange(async (_event, session) => {
+        if (session?.user) {
+          try { await OneSignal.login(session.user.id); } catch {}
+          await syncPlayerIdToDB(OneSignal);
+        } else {
+          try { await OneSignal.logout(); } catch {}
+        }
+      });
+
+      // Suppress OS notifications while page is visible
+      OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event) => {
+        event.preventDefault();
+      });
+
+      onesignalReadyResolve(OneSignal);
+    } catch (err) {
+      console.error('[OneSignal] init error:', err);
+      onesignalReadyResolve(null);
+    }
+  });
+
+  return onesignalReady;
 }
 
 /**
- * Returns a promise that resolves when OneSignal is ready, with the SDK instance.
+ * Triggers the native browser notification permission prompt.
+ * Returns 'granted' | 'denied' | 'default'.
  */
-function withOneSignal() {
-  return new Promise((resolve) => {
-    if (!ONESIGNAL_APP_ID) return resolve(null);
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    window.OneSignalDeferred.push((OneSignal) => resolve(OneSignal));
-  });
-}
-
 export async function requestNotificationPermission() {
-  const OneSignal = await withOneSignal();
-  if (!OneSignal) return 'denied';
-  try {
-    await OneSignal.Notifications.requestPermission();
-    // After grant, sync immediately
-    await syncPlayerIdToDB(OneSignal);
-    return OneSignal.Notifications.permission ? 'granted' : 'denied';
-  } catch (error) {
-    console.error('[OneSignal] permission request error:', error);
-    return 'denied';
+  // First-class fallback: if OneSignal isn't configured / loaded yet,
+  // ask the browser directly so the unified Permissions onboarding still works.
+  const OneSignal = await Promise.race([
+    onesignalReady,
+    new Promise((r) => setTimeout(() => r(null), 3000)),
+  ]);
+
+  if (OneSignal) {
+    try {
+      await OneSignal.Notifications.requestPermission();
+      // Give SDK a moment to register the subscription
+      await new Promise((r) => setTimeout(r, 500));
+      await syncPlayerIdToDB(OneSignal);
+    } catch (err) {
+      console.error('[OneSignal] permission request error:', err);
+    }
+  } else if (typeof Notification !== 'undefined') {
+    try { await Notification.requestPermission(); } catch {}
   }
+
+  return typeof Notification !== 'undefined' ? Notification.permission : 'denied';
 }
 
 export async function getPlayerId() {
-  const OneSignal = await withOneSignal();
+  const OneSignal = await onesignalReady;
   return OneSignal?.User?.PushSubscription?.id || null;
 }
 
 export async function setExternalUserId(userId) {
-  const OneSignal = await withOneSignal();
+  const OneSignal = await onesignalReady;
   if (!OneSignal) return;
   try { await OneSignal.login(userId); } catch (err) { console.error(err); }
 }
 
-// Kept for back-compat; production sends should go through send-notification Edge Function.
+// Production sends go through the send-notification Edge Function.
 export async function sendPushNotification(playerId, title, message, data = {}) {
   console.log('[OneSignal] client-side sendPushNotification is a no-op; use Edge Function.');
   return { app_id: ONESIGNAL_APP_ID, include_player_ids: [playerId], headings: { en: title }, contents: { en: message }, data };

@@ -7,7 +7,7 @@ import { initOneSignal } from './services/onesignal';
 import { dispatchNotification } from './services/notifications';
 import ReceivedNotificationOverlay from './components/ReceivedNotificationOverlay';
 import MilestoneCelebration from './components/MilestoneCelebration';
-import NotificationPermissionFlow from './components/NotificationPermissionFlow';
+import PermissionsOnboarding from './components/PermissionsOnboarding';
 import NotificationInbox from './components/NotificationInbox';
 import InstallBanner from './components/InstallBanner';
 import FirstMetPrompt from './components/FirstMetPrompt';
@@ -92,7 +92,7 @@ export default function App() {
       {/* Global overlays — render above all routes */}
       <ReceivedNotificationOverlay />
       <MilestoneCelebration />
-      <NotificationPermissionFlow />
+      <PermissionsOnboarding />
       <NotificationInbox />
       <InstallBanner />
       <FirstMetPrompt />
